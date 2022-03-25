@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from rest_framework import serializers
+
 
 User = get_user_model()
 
@@ -21,7 +23,7 @@ class Post(models.Model):
     )
     group = models.ForeignKey(
         Group,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='posts',
         blank=True,
         null=True
@@ -42,6 +44,9 @@ class Comment(models.Model):
     created = models.DateTimeField(
         'Дата добавления', auto_now_add=True, db_index=True)
 
+    def __str__(self):
+        return '"{}" комментарий к посту "{}"'.format(self.text, self.post)
+
 
 class Follow(models.Model):
     user = models.ForeignKey(
@@ -54,3 +59,19 @@ class Follow(models.Model):
         on_delete=models.CASCADE,
         related_name='following',
     )
+
+    class Meta:
+        unique_together = [['user', 'following']]
+
+    def save(self, **kwargs):
+        if self.user == self.following:
+            raise serializers.ValidationError(
+                'Ошибка! Нельзя подписаться на себя!'
+            )
+        else:
+            super(Follow, self).save(**kwargs)
+
+    def __str__(self):
+        return 'Пользователь "{}" подписан на "{}"'.format(
+            self.user, self.following
+        )
