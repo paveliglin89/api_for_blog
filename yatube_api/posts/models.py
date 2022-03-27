@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.core.exceptions import ValidationError
 
 
 User = get_user_model()
@@ -65,16 +64,12 @@ class Follow(models.Model):
             models.UniqueConstraint(
                 fields=['user', 'following'],
                 name='unique_user_following'
+            ),
+            models.CheckConstraint(
+                check=~models.Q(user=models.F('following')),
+                name='could_not_follow_yourself'
             )
         ]
-
-    def clean(self):
-        if self.user == self.following:
-            raise ValidationError("Нельзя подписаться на себя!")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'Пользователь "{self.user}" подписан на "{self.following}"'
