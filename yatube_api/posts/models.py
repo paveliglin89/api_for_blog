@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
-from rest_framework import serializers
+from django.core.exceptions import ValidationError
 
 
 User = get_user_model()
@@ -61,17 +61,20 @@ class Follow(models.Model):
     )
 
     class Meta:
-        unique_together = [['user', 'following']]
-
-    def save(self, **kwargs):
-        if self.user == self.following:
-            raise serializers.ValidationError(
-                'Ошибка! Нельзя подписаться на себя!'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'following'],
+                name='unique_user_following'
             )
-        else:
-            super(Follow, self).save(**kwargs)
+        ]
+
+    def clean(self):
+        if self.user == self.following:
+            raise ValidationError("Нельзя подписаться на себя!")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return 'Пользователь "{}" подписан на "{}"'.format(
-            self.user, self.following
-        )
+        return f'Пользователь "{self.user}" подписан на "{self.following}"'
